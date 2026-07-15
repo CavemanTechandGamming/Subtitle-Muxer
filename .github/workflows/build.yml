@@ -1,6 +1,15 @@
 # =============================================================================
-# Subtitle Muxer — manual multi-platform PyInstaller builds
+# Subtitle Muxer — manual multi-platform PyInstaller builds (artifacts only)
 # Trigger: Actions → Build → Run workflow
+# Also callable from the Build and Release workflow.
+#
+# Artifact names include the app version from src/__init__.py, e.g.:
+#   subtitle-muxer-windows-1.0.0-portable
+#   subtitle-muxer-ubuntu-1.0.0-portable
+#   subtitle-muxer-fedora-1.0.0-installable
+#
+# Linux variants (Ubuntu / Debian / Mint / Fedora / Arch) build inside matching
+# containers on ubuntu-latest — GitHub does not provide native runners for each.
 # =============================================================================
 name: Build
 
@@ -8,55 +17,60 @@ on:
   workflow_dispatch:
     inputs:
       python_version:
-        description: "Python version"
+        description: "Python version (Windows / macOS)"
         required: false
-        default: "3.12"
+        default: "3.14"
+        type: string
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version (Windows / macOS)"
+        required: false
+        default: "3.14"
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build (${{ matrix.os }})
+  # ── Windows + macOS (hosted runners) ─────────────────────────────────────
+  build-desktop:
+    name: Build (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Map runner OS → dist platform folder
-        id: meta
-        shell: bash
-        run: |
-          case "${{ matrix.os }}" in
-            windows-latest) echo "platform=windows" >> "$GITHUB_OUTPUT" ;;
-            ubuntu-latest)  echo "platform=linux"   >> "$GITHUB_OUTPUT" ;;
-            macos-latest)   echo "platform=macos"   >> "$GITHUB_OUTPUT" ;;
-          esac
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
           cache: pip
+          cache-dependency-path: requirements/requirements.txt
 
-      - name: Install OS packages (Ubuntu — Tk)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Read app version
+        id: version
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-tk tcl-dev tk-dev
+          VERSION="$(python scripts/read_version.py)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "App version: ${VERSION}"
 
       - name: Setup env + build (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         shell: cmd
         run: |
           call scripts\setup_env.bat
@@ -64,25 +78,93 @@ jobs:
           call scripts\build_app.bat
           if errorlevel 1 exit /b 1
 
-      - name: Setup env + build (Linux / macOS)
-        if: matrix.os != 'windows-latest'
+      - name: Setup env + build (macOS)
+        if: matrix.platform == 'macos'
         run: |
-          chmod +x scripts/setup_env.sh scripts/build_app.sh
+          chmod +x scripts/setup_env.sh scripts/build_app.sh scripts/read_version.py
           ./scripts/setup_env.sh
           ./scripts/build_app.sh
 
-      - name: Upload onefile artifact
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: subtitle-muxer-${{ steps.meta.outputs.platform }}-onefile
-          path: dist/${{ steps.meta.outputs.platform }}/onefile/**
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
+          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload onedir artifact
+      - name: Upload installable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: subtitle-muxer-${{ steps.meta.outputs.platform }}-onedir
-          path: dist/${{ steps.meta.outputs.platform }}/onedir/**
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
+          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**
+          if-no-files-found: error
+          retention-days: 30
+
+  # ── Linux distros (containers) ───────────────────────────────────────────
+  build-linux:
+    name: Build (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+      options: --user root
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu
+            image: ubuntu:24.04
+            pkgs: apt
+          - platform: debian
+            image: debian:bookworm
+            pkgs: apt
+          - platform: mint
+            # Official Linux Mint Docker images (Ubuntu-based)
+            image: linuxmintd/mint22.1-amd64
+            pkgs: apt
+          - platform: fedora
+            image: fedora:latest
+            pkgs: dnf
+          - platform: arch
+            image: archlinux:latest
+            pkgs: pacman
+
+    env:
+      SUBTITLE_MUXER_PLATFORM: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install distro build dependencies
+        run: |
+          chmod +x scripts/ci_install_linux_deps.sh scripts/setup_env.sh scripts/build_app.sh scripts/read_version.py
+          ./scripts/ci_install_linux_deps.sh "${{ matrix.pkgs }}"
+
+      - name: Read app version
+        id: version
+        run: |
+          VERSION="$(python3 scripts/read_version.py)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "App version: ${VERSION}"
+
+      - name: Setup env + build
+        run: |
+          ./scripts/setup_env.sh
+          ./scripts/build_app.sh
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
+          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload installable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
+          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**
           if-no-files-found: error
           retention-days: 30

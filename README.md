@@ -28,11 +28,9 @@ Copy subtitle tracks from one video onto another — for example an original rip
 
 ## Download
 
-1. Open this repository’s **Releases** (or the latest **Actions → Build** artifacts if no release is posted yet).
-2. Download the build for your OS:
-   - **Windows** — `SubtitleMuxer.exe` (portable) or the onedir folder
-   - **macOS** / **Linux** — matching onefile or onedir package
-3. Run the app. No installer is required for the portable build.
+1. Open this repository’s **[Releases](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases)** page.
+2. Download the zip for your OS (`…-portable` = single executable; `…-installable` = folder build).
+3. Extract if needed, then run **Subtitle Muxer**. No separate FFmpeg install is required for normal use.
 
 ---
 

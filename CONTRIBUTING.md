@@ -20,6 +20,22 @@ Keep the **repository root** reserved for project metadata only:
 
 Do not add application code, build outputs, or virtualenvs at the root.
 
+## Version number (single source of truth)
+
+The app version lives in **one place only**:
+
+```text
+src/__init__.py  →  __version__ = "x.y.z"
+```
+
+Everything else reads from that value:
+
+- Window title and About dialog
+- `python scripts/read_version.py` (used by CI)
+- GitHub Release tags / asset names (`vX.Y.Z`, `SubtitleMuxer-X.Y.Z-…`)
+
+**When shipping a new release:** bump `__version__` in `src/__init__.py`, commit, then run **Build and Release**. Do not hard-code the version in workflows or scripts.
+
 ## About `.gitignore`
 
 **`.gitignore` should be committed to GitHub.** It is a normal tracked file.
@@ -34,7 +50,7 @@ Those stay on your machine (or in CI artifacts).
 
 ## Development setup
 
-Requires **Python 3.10+**.
+Requires **Python 3.10+** (development / CI currently use **3.14**).
 
 **Windows:**
 
@@ -67,12 +83,12 @@ python -m src
 
 ## Build locally
 
-PyInstaller outputs (gitignored) go under `dist/<platform>/`:
+PyInstaller outputs (gitignored) include the version from `src/__init__.py`:
 
-| Type | Example |
-|------|---------|
-| Portable (`--onefile`) | `dist/windows/onefile/SubtitleMuxer.exe` |
-| Folder (`--onedir`) | `dist/windows/onedir/SubtitleMuxer/` |
+| Type | Example (`1.0.0` on Windows) |
+|------|------------------------------|
+| **portable** (single file) | `dist/windows/1.0.0/portable/SubtitleMuxer-1.0.0.exe` |
+| **installable** (folder) | `dist/windows/1.0.0/installable/SubtitleMuxer-1.0.0/` |
 
 ```bat
 scripts\build_app.bat
@@ -82,19 +98,72 @@ scripts\build_app.bat
 ./scripts/build_app.sh
 ```
 
-## Build with GitHub Actions (manual)
+## GitHub Actions
 
-Workflow: [`.github/workflows/build.yml`](.github/workflows/build.yml)
+Two manual workflows (no push/PR triggers):
 
-- Trigger: **Actions → Build → Run workflow** only (`workflow_dispatch` — no push/PR builds)
-- Matrix: `windows-latest`, `ubuntu-latest`, `macos-latest`
-- Artifacts: `subtitle-muxer-<platform>-onefile` and `…-onedir`
+| Workflow | File | What it does |
+|----------|------|----------------|
+| **Build** | [`.github/workflows/build.yml`](.github/workflows/build.yml) | Matrix build → upload versioned artifacts only |
+| **Build and Release** | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Same builds → create a GitHub Release with versioned zips |
+
+Both default to Python **3.14** on Windows/macOS. Linux builds use each distro’s system Python inside containers.
+
+Artifact names look like:
+
+```text
+subtitle-muxer-windows-1.0.0-portable
+subtitle-muxer-ubuntu-1.0.0-portable
+subtitle-muxer-debian-1.0.0-installable
+subtitle-muxer-mint-1.0.0-portable
+subtitle-muxer-fedora-1.0.0-portable
+subtitle-muxer-arch-1.0.0-installable
+```
+
+### Linux matrix
+
+GitHub only hosts Ubuntu runners, so Linux flavours are built in Docker containers:
+
+| Platform label | Container image |
+|----------------|-----------------|
+| `ubuntu` | `ubuntu:24.04` |
+| `debian` | `debian:bookworm` |
+| `mint` | `linuxmintd/mint22.1-amd64` |
+| `fedora` | `fedora:latest` |
+| `arch` | `archlinux:latest` |
+
+Also built: `windows`, `macos`.
+
+### Build only
+
+1. Actions → **Build** → **Run workflow**
+2. Download the versioned artifacts when finished
 
 ```bash
 gh workflow run build.yml
 gh run watch
 gh run download
 ```
+
+### Build and release
+
+1. Bump `__version__` in `src/__init__.py` and push to `main`
+2. Actions → **Build and Release** → **Run workflow**
+3. Creates tag `vX.Y.Z` and attaches zips such as:
+
+   - `SubtitleMuxer-1.0.0-windows-portable.zip`
+   - `SubtitleMuxer-1.0.0-ubuntu-portable.zip`
+   - `SubtitleMuxer-1.0.0-debian-installable.zip`
+   - (same portable/installable pattern for `mint`, `fedora`, `arch`, and `macos`)
+
+Optional inputs: **draft**, **prerelease**.
+
+```bash
+gh workflow run "Build and Release"
+# or: gh workflow run release.yml
+```
+
+If `vX.Y.Z` already exists, the release job fails — bump the version and try again.
 
 ## Screenshots
 

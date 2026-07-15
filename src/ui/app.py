@@ -13,6 +13,7 @@ from pathlib import Path
 import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
+from src import __version__
 from src.core.muxer import MuxOptions, MuxerError, mux_subtitles
 from src.core.probe import ProbeError, assert_video_file, probe_source
 from src.core.settings import get_default_output_dir, set_default_output_dir
@@ -34,7 +35,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
         # Enable native DnD on this Tk root
         self.TkdndVersion = TkinterDnD._require(self)
 
-        self.title("Subtitle Muxer")
+        self.title(f"Subtitle Muxer {__version__}")
         self.geometry("960x820")
         self.minsize(820, 700)
 
@@ -64,7 +65,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         ctk.CTkLabel(
             header_row,
-            text="Subtitle Muxer",
+            text=f"Subtitle Muxer {__version__}",
             font=ctk.CTkFont(size=22, weight="bold"),
         ).grid(row=0, column=0, sticky="w")
 
