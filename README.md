@@ -6,11 +6,11 @@ Copy subtitle tracks from one video onto another — for example an original rip
 
 ## Screenshots
 
-<!-- Add your PNGs under docs/images/, then these will show on GitHub. -->
-
 ![Main window](docs/images/main-window.png)
 
 ![Destination settings](docs/images/destination.png)
+
+![Mux complete](docs/images/mux-complete.png)
 
 ---
 
