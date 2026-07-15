@@ -1,11 +1,11 @@
 @echo off
-REM ──────────────────────────────────────────────────────────────────────────
-REM  setup_env.bat — create/refresh the local virtual environment (Windows)
-REM ──────────────────────────────────────────────────────────────────────────
+REM ----------------------------------------------------------------------------
+REM  setup_env.bat - create/refresh the local virtual environment (Windows)
+REM ----------------------------------------------------------------------------
 
 cd /d "%~dp0.."
 echo.
-echo === Subtitle Muxer — environment setup (Windows) ===
+echo === Subtitle Muxer - environment setup (Windows) ===
 echo Working directory: %CD%
 echo.
 
@@ -38,7 +38,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/4] Downloading bundled FFmpeg into the virtualenv ^(first run may take a bit^) ...
+echo [4/4] Downloading bundled FFmpeg into the virtualenv (first run may take a bit) ...
 python -c "from src.core.ffmpeg_paths import ensure_ffmpeg_on_path, ffmpeg_binary, ffprobe_binary; ensure_ffmpeg_on_path(); print('ffmpeg :', ffmpeg_binary()); print('ffprobe:', ffprobe_binary())"
 if errorlevel 1 (
     echo ERROR: Failed to fetch bundled FFmpeg binaries.

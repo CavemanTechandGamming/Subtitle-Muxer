@@ -33,3 +33,7 @@ Thumbs.db
 build/
 dist/
 *.spec
+
+# Local draft for pasting into the GitHub Release description (Markdown).
+# Never commit this — copy from RELEASE_BODY.md into the release UI instead.
+RELEASE_BODY.md

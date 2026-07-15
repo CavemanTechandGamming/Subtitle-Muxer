@@ -1,19 +1,19 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-REM ──────────────────────────────────────────────────────────────────────────
-REM  build_app.bat — versioned portable + installer PyInstaller builds (Windows)
+REM ----------------------------------------------------------------------------
+REM  build_app.bat - versioned portable + installer PyInstaller builds (Windows)
 REM  Version comes from src\__init__.py (single source of truth).
 REM
 REM  Outputs (example):
 REM    dist\windows\0.1.0\portable\SubtitleMuxer-0.1.0.exe
 REM    dist\windows\0.1.0\installer\SubtitleMuxer-0.1.0\...
-REM ──────────────────────────────────────────────────────────────────────────
+REM ----------------------------------------------------------------------------
 
 cd /d "%~dp0.."
 set "PLATFORM=windows"
 
 echo.
-echo === Subtitle Muxer — PyInstaller build (Windows) ===
+echo === Subtitle Muxer - PyInstaller build (Windows) ===
 echo Working directory: %CD%
 echo.
 
@@ -44,16 +44,16 @@ echo Artifact names: subtitle-muxer-%PLATFORM%-%VERSION%-portable / installer
 echo.
 
 REM Shared PyInstaller flags for CustomTkinter + tkinterdnd2 + static-ffmpeg
-REM --paths=. keeps ``import src...`` working when the entry script lives under src/
+REM --paths=. keeps "import src..." working when the entry script lives under src/
 set "COMMON_ARGS=--noconfirm --clean --windowed --name %APP_NAME% --paths=. --collect-all customtkinter --collect-all tkinterdnd2 --collect-all static_ffmpeg --hidden-import=tkinterdnd2 --hidden-import=ffmpeg --hidden-import=static_ffmpeg"
 
-echo [1/2] Building portable ^(onefile^) ...
+echo [1/2] Building portable (onefile) ...
 if exist "dist\%PLATFORM%\%VERSION%\portable" rmdir /s /q "dist\%PLATFORM%\%VERSION%\portable"
 if exist "build\%PLATFORM%\%VERSION%\portable" rmdir /s /q "build\%PLATFORM%\%VERSION%\portable"
 mkdir "dist\%PLATFORM%\%VERSION%\portable" 2>nul
 mkdir "build\%PLATFORM%\%VERSION%\portable" 2>nul
 
-pyinstaller %COMMON_ARGS% ^
+python -m PyInstaller %COMMON_ARGS% ^
     --onefile ^
     --distpath "dist\%PLATFORM%\%VERSION%\portable" ^
     --workpath "build\%PLATFORM%\%VERSION%\portable" ^
@@ -64,13 +64,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/2] Building installer ^(onedir^) ...
+echo [2/2] Building installer (onedir) ...
 if exist "dist\%PLATFORM%\%VERSION%\installer" rmdir /s /q "dist\%PLATFORM%\%VERSION%\installer"
 if exist "build\%PLATFORM%\%VERSION%\installer" rmdir /s /q "build\%PLATFORM%\%VERSION%\installer"
 mkdir "dist\%PLATFORM%\%VERSION%\installer" 2>nul
 mkdir "build\%PLATFORM%\%VERSION%\installer" 2>nul
 
-pyinstaller %COMMON_ARGS% ^
+python -m PyInstaller %COMMON_ARGS% ^
     --onedir ^
     --distpath "dist\%PLATFORM%\%VERSION%\installer" ^
     --workpath "build\%PLATFORM%\%VERSION%\installer" ^

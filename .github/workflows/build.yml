@@ -81,12 +81,17 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "App version: ${VERSION}"
 
-      - name: Setup env + build (Windows)
+      - name: Setup env (Windows)
         if: matrix.platform == 'windows'
         shell: cmd
         run: |
           call scripts\setup_env.bat
           if errorlevel 1 exit /b 1
+
+      - name: Build (Windows)
+        if: matrix.platform == 'windows'
+        shell: cmd
+        run: |
           call scripts\build_app.bat
           if errorlevel 1 exit /b 1
 
