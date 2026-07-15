@@ -1,0 +1,88 @@
+# =============================================================================
+# Subtitle Muxer — manual multi-platform PyInstaller builds
+# Trigger: Actions → Build → Run workflow
+# =============================================================================
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: "Python version"
+        required: false
+        default: "3.12"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Map runner OS → dist platform folder
+        id: meta
+        shell: bash
+        run: |
+          case "${{ matrix.os }}" in
+            windows-latest) echo "platform=windows" >> "$GITHUB_OUTPUT" ;;
+            ubuntu-latest)  echo "platform=linux"   >> "$GITHUB_OUTPUT" ;;
+            macos-latest)   echo "platform=macos"   >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+
+      - name: Install OS packages (Ubuntu — Tk)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk tcl-dev tk-dev
+
+      - name: Setup env + build (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          call scripts\setup_env.bat
+          if errorlevel 1 exit /b 1
+          call scripts\build_app.bat
+          if errorlevel 1 exit /b 1
+
+      - name: Setup env + build (Linux / macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          chmod +x scripts/setup_env.sh scripts/build_app.sh
+          ./scripts/setup_env.sh
+          ./scripts/build_app.sh
+
+      - name: Upload onefile artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-muxer-${{ steps.meta.outputs.platform }}-onefile
+          path: dist/${{ steps.meta.outputs.platform }}/onefile/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload onedir artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-muxer-${{ steps.meta.outputs.platform }}-onedir
+          path: dist/${{ steps.meta.outputs.platform }}/onedir/**
+          if-no-files-found: error
+          retention-days: 30
