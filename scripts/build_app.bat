@@ -1,11 +1,12 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 REM ──────────────────────────────────────────────────────────────────────────
-REM  build_app.bat — versioned portable + installable PyInstaller builds
+REM  build_app.bat — versioned portable + installer PyInstaller builds (Windows)
 REM  Version comes from src\__init__.py (single source of truth).
-REM  Outputs (example for 1.0.0):
-REM    dist\windows\1.0.0\portable\SubtitleMuxer-1.0.0.exe
-REM    dist\windows\1.0.0\installable\SubtitleMuxer-1.0.0\...
+REM
+REM  Outputs (example):
+REM    dist\windows\0.1.0\portable\SubtitleMuxer-0.1.0.exe
+REM    dist\windows\0.1.0\installer\SubtitleMuxer-0.1.0\...
 REM ──────────────────────────────────────────────────────────────────────────
 
 cd /d "%~dp0.."
@@ -39,7 +40,7 @@ if not defined VERSION (
 
 set "APP_NAME=SubtitleMuxer-%VERSION%"
 echo App version: %VERSION%
-echo Artifact names: subtitle-muxer-%PLATFORM%-%VERSION%-portable / installable
+echo Artifact names: subtitle-muxer-%PLATFORM%-%VERSION%-portable / installer
 echo.
 
 REM Shared PyInstaller flags for CustomTkinter + tkinterdnd2 + static-ffmpeg
@@ -63,26 +64,26 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/2] Building installable ^(onedir^) ...
-if exist "dist\%PLATFORM%\%VERSION%\installable" rmdir /s /q "dist\%PLATFORM%\%VERSION%\installable"
-if exist "build\%PLATFORM%\%VERSION%\installable" rmdir /s /q "build\%PLATFORM%\%VERSION%\installable"
-mkdir "dist\%PLATFORM%\%VERSION%\installable" 2>nul
-mkdir "build\%PLATFORM%\%VERSION%\installable" 2>nul
+echo [2/2] Building installer ^(onedir^) ...
+if exist "dist\%PLATFORM%\%VERSION%\installer" rmdir /s /q "dist\%PLATFORM%\%VERSION%\installer"
+if exist "build\%PLATFORM%\%VERSION%\installer" rmdir /s /q "build\%PLATFORM%\%VERSION%\installer"
+mkdir "dist\%PLATFORM%\%VERSION%\installer" 2>nul
+mkdir "build\%PLATFORM%\%VERSION%\installer" 2>nul
 
 pyinstaller %COMMON_ARGS% ^
     --onedir ^
-    --distpath "dist\%PLATFORM%\%VERSION%\installable" ^
-    --workpath "build\%PLATFORM%\%VERSION%\installable" ^
-    --specpath "build\%PLATFORM%\%VERSION%\installable" ^
+    --distpath "dist\%PLATFORM%\%VERSION%\installer" ^
+    --workpath "build\%PLATFORM%\%VERSION%\installer" ^
+    --specpath "build\%PLATFORM%\%VERSION%\installer" ^
     src\__main__.py
 if errorlevel 1 (
-    echo ERROR: installable build failed.
+    echo ERROR: installer build failed.
     exit /b 1
 )
 
 echo.
 echo Build complete:
-echo   Portable    : dist\%PLATFORM%\%VERSION%\portable\%APP_NAME%.exe
-echo   Installable : dist\%PLATFORM%\%VERSION%\installable\%APP_NAME%\
+echo   Portable  : dist\%PLATFORM%\%VERSION%\portable\%APP_NAME%.exe
+echo   Installer : dist\%PLATFORM%\%VERSION%\installer\%APP_NAME%\
 echo.
 exit /b 0

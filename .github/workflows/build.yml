@@ -3,14 +3,12 @@
 # Trigger: Actions → Build → Run workflow
 # Also callable from the Build and Release workflow.
 #
-# Artifact examples:
+# Artifact examples (only Windows includes portable/installer):
 #   subtitle-muxer-windows-0.1.0-portable
-#   subtitle-muxer-windows-0.1.0-installable
-#   subtitle-muxer-macos-arm64-0.1.0-portable
-#   subtitle-muxer-macos-intel-0.1.0-portable
-#   subtitle-muxer-ubuntu-0.1.0-portable
-#
-# Linux/macOS: portable only. Windows: portable + installable.
+#   subtitle-muxer-windows-0.1.0-installer
+#   subtitle-muxer-mac-apple-silicon-0.1.0
+#   subtitle-muxer-mac-intel-0.1.0
+#   subtitle-muxer-ubuntu-0.1.0
 # =============================================================================
 name: Build
 
@@ -40,7 +38,7 @@ concurrency:
 jobs:
   # ── Windows + macOS (hosted runners) ─────────────────────────────────────
   build-desktop:
-    name: Build (${{ matrix.platform }})
+    name: Build (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -48,19 +46,20 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            upload_installable: true
-          # Apple Silicon (arm64)
+            label: Windows
+            upload_installer: true
           - os: macos-15
-            platform: macos-arm64
-            upload_installable: false
-          # Intel Mac
-          - os: macos-13
-            platform: macos-intel
-            upload_installable: false
+            platform: mac-apple-silicon
+            label: Mac Apple Silicon
+            upload_installer: false
+          - os: macos-15-intel
+            platform: mac-intel
+            label: Mac Intel
+            upload_installer: false
 
     env:
       SUBTITLE_MUXER_PLATFORM: ${{ matrix.platform }}
-      # Linux/mac use portable only; Windows bat ignores this and always builds both.
+      # Mac/Linux: one packaged binary. Windows bat always builds portable + installer.
       SUBTITLE_MUXER_BUILD_KINDS: portable
 
     steps:
@@ -81,7 +80,6 @@ jobs:
           VERSION="$(python scripts/read_version.py)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "App version: ${VERSION}"
-          uname -m
 
       - name: Setup env + build (Windows)
         if: matrix.platform == 'windows'
@@ -93,30 +91,40 @@ jobs:
           if errorlevel 1 exit /b 1
 
       - name: Setup env + build (macOS)
-        if: startsWith(matrix.platform, 'macos')
+        if: startsWith(matrix.platform, 'mac-')
         run: |
           chmod +x scripts/setup_env.sh scripts/build_app.sh scripts/read_version.py
           ./scripts/setup_env.sh
           ./scripts/build_app.sh
 
-      - name: Upload portable artifact
+      - name: Upload Windows portable artifact
+        if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v7
         with:
-          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
+          name: subtitle-muxer-windows-${{ steps.version.outputs.version }}-portable
+          path: dist/windows/${{ steps.version.outputs.version }}/portable/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Windows installer artifact
+        if: matrix.upload_installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: subtitle-muxer-windows-${{ steps.version.outputs.version }}-installer
+          path: dist/windows/${{ steps.version.outputs.version }}/installer/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Mac artifact
+        if: startsWith(matrix.platform, 'mac-')
+        uses: actions/upload-artifact@v7
+        with:
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload installable artifact (Windows only)
-        if: matrix.upload_installable
-        uses: actions/upload-artifact@v7
-        with:
-          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
-          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**
-          if-no-files-found: error
-          retention-days: 30
-
-  # ── Linux distros (containers) — portable only ───────────────────────────
+  # ── Linux distros (containers) — one build each ──────────────────────────
   build-linux:
     name: Build (${{ matrix.platform }})
     runs-on: ubuntu-latest
@@ -169,10 +177,10 @@ jobs:
       - name: Build with PyInstaller
         run: ./scripts/build_app.sh
 
-      - name: Upload portable artifact
+      - name: Upload Linux artifact
         uses: actions/upload-artifact@v7
         with:
-          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
+          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
           if-no-files-found: error
           retention-days: 30

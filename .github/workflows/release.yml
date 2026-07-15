@@ -5,12 +5,12 @@
 # Version tag/assets come from src/__init__.py (__version__).
 # Bump that value before running this workflow.
 #
-# Release zips follow artifact naming, e.g.:
+# Release zips (only Windows includes portable/installer):
 #   SubtitleMuxer-0.1.0-windows-portable.zip
-#   SubtitleMuxer-0.1.0-windows-installable.zip
-#   SubtitleMuxer-0.1.0-macos-arm64-portable.zip
-#   SubtitleMuxer-0.1.0-macos-intel-portable.zip
-#   SubtitleMuxer-0.1.0-ubuntu-portable.zip
+#   SubtitleMuxer-0.1.0-windows-installer.zip
+#   SubtitleMuxer-0.1.0-mac-apple-silicon.zip
+#   SubtitleMuxer-0.1.0-mac-intel.zip
+#   SubtitleMuxer-0.1.0-ubuntu.zip
 # =============================================================================
 name: Build and Release
 
@@ -87,13 +87,19 @@ jobs:
           mkdir -p release-assets
           shopt -s nullglob
 
-          for dir in artifacts/subtitle-muxer-*-portable artifacts/subtitle-muxer-*-installable; do
+          for dir in artifacts/subtitle-muxer-*; do
             [[ -d "$dir" ]] || continue
             name="$(basename "$dir")"
-            if [[ "$name" =~ ^subtitle-muxer-(windows|macos-arm64|macos-intel|ubuntu|debian|mint|fedora|arch)-(.+)-(portable|installable)$ ]]; then
+
+            # Windows: only platform that includes portable | installer in the name
+            if [[ "$name" =~ ^subtitle-muxer-windows-(.+)-(portable|installer)$ ]]; then
+              art_version="${BASH_REMATCH[1]}"
+              kind="${BASH_REMATCH[2]}"
+              zip_name="SubtitleMuxer-${VERSION}-windows-${kind}.zip"
+            elif [[ "$name" =~ ^subtitle-muxer-(mac-apple-silicon|mac-intel|ubuntu|debian|mint|fedora|arch)-(.+)$ ]]; then
               platform="${BASH_REMATCH[1]}"
               art_version="${BASH_REMATCH[2]}"
-              kind="${BASH_REMATCH[3]}"
+              zip_name="SubtitleMuxer-${VERSION}-${platform}.zip"
             else
               echo "::error::Unexpected artifact name: ${name}"
               exit 1
@@ -104,7 +110,6 @@ jobs:
               exit 1
             fi
 
-            zip_name="SubtitleMuxer-${VERSION}-${platform}-${kind}.zip"
             (cd "$dir" && zip -r -9 "$GITHUB_WORKSPACE/release-assets/${zip_name}" .)
             echo "Created ${zip_name}"
           done

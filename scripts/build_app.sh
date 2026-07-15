@@ -4,11 +4,12 @@
 #
 # Version comes from src/__init__.py (single source of truth).
 #
-# By default builds a single portable (onefile) binary — Linux/mac only need one
-# packaging style. Set SUBTITLE_MUXER_BUILD_KINDS=both to also build installable.
+# By default builds a single onefile binary — Linux/Mac only need one packaging
+# style. Set SUBTITLE_MUXER_BUILD_KINDS=both to also build the onedir (installer)
+# layout (mainly useful for local testing; CI does not publish that for Mac/Linux).
 #
 # Outputs (example):
-#   dist/macos-arm64/0.1.0/portable/SubtitleMuxer-0.1.0
+#   dist/mac-apple-silicon/0.1.0/portable/SubtitleMuxer-0.1.0
 #   dist/ubuntu/0.1.0/portable/SubtitleMuxer-0.1.0
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -29,9 +30,9 @@ else
       # Distinguish Apple Silicon vs Intel for artifact naming.
       machine="$(uname -m)"
       if [[ "$machine" == "arm64" ]]; then
-        PLATFORM="macos-arm64"
+        PLATFORM="mac-apple-silicon"
       else
-        PLATFORM="macos-intel"
+        PLATFORM="mac-intel"
       fi
       ;;
     msys*|cygwin*|mingw*)
@@ -44,7 +45,7 @@ else
   esac
 fi
 
-# portable | installable | both  (default: portable only)
+# portable | installer | both  (default: portable only)
 BUILD_KINDS="${SUBTITLE_MUXER_BUILD_KINDS:-portable}"
 
 echo
@@ -101,34 +102,34 @@ build_portable() {
   echo "  -> dist/${PLATFORM}/${VERSION}/portable/${APP_NAME}"
 }
 
-build_installable() {
-  echo "Building installable (onedir) ..."
-  rm -rf "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
-  mkdir -p "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
+build_installer() {
+  echo "Building installer (onedir) ..."
+  rm -rf "dist/${PLATFORM}/${VERSION}/installer" "build/${PLATFORM}/${VERSION}/installer"
+  mkdir -p "dist/${PLATFORM}/${VERSION}/installer" "build/${PLATFORM}/${VERSION}/installer"
 
   pyinstaller "${COMMON_ARGS[@]}" \
     --onedir \
-    --distpath "dist/${PLATFORM}/${VERSION}/installable" \
-    --workpath "build/${PLATFORM}/${VERSION}/installable" \
-    --specpath "build/${PLATFORM}/${VERSION}/installable" \
+    --distpath "dist/${PLATFORM}/${VERSION}/installer" \
+    --workpath "build/${PLATFORM}/${VERSION}/installer" \
+    --specpath "build/${PLATFORM}/${VERSION}/installer" \
     src/__main__.py
 
-  echo "  -> dist/${PLATFORM}/${VERSION}/installable/${APP_NAME}/"
+  echo "  -> dist/${PLATFORM}/${VERSION}/installer/${APP_NAME}/"
 }
 
 case "$BUILD_KINDS" in
   portable)
     build_portable
     ;;
-  installable)
-    build_installable
+  installer)
+    build_installer
     ;;
   both)
     build_portable
-    build_installable
+    build_installer
     ;;
   *)
-    echo "ERROR: SUBTITLE_MUXER_BUILD_KINDS must be portable, installable, or both (got: ${BUILD_KINDS})"
+    echo "ERROR: SUBTITLE_MUXER_BUILD_KINDS must be portable, installer, or both (got: ${BUILD_KINDS})"
     exit 1
     ;;
 esac
