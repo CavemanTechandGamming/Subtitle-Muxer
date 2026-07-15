@@ -52,10 +52,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
           cache: pip
@@ -86,7 +86,7 @@ jobs:
           ./scripts/build_app.sh
 
       - name: Upload portable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
@@ -94,7 +94,7 @@ jobs:
           retention-days: 30
 
       - name: Upload installable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install distro build dependencies
         run: |
@@ -148,13 +148,14 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "App version: ${VERSION}"
 
-      - name: Setup env + build
-        run: |
-          ./scripts/setup_env.sh
-          ./scripts/build_app.sh
+      - name: Setup env
+        run: ./scripts/setup_env.sh
+
+      - name: Build with PyInstaller
+        run: ./scripts/build_app.sh
 
       - name: Upload portable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
@@ -162,7 +163,7 @@ jobs:
           retention-days: 30
 
       - name: Upload installable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**

@@ -8,7 +8,9 @@ case "$mgr" in
   apt)
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y --no-install-recommends \
+    # Do not use --no-install-recommends for the Python venv stack — Ubuntu/Debian
+    # need ensurepip wiring that recommends pull into place.
+    apt-get install -y \
       ca-certificates \
       curl \
       git \
@@ -18,6 +20,8 @@ case "$mgr" in
       python3 \
       python3-pip \
       python3-venv \
+      python3-full \
+      python3-dev \
       python3-tk \
       tcl \
       tk \
@@ -36,6 +40,7 @@ case "$mgr" in
       which \
       python3 \
       python3-pip \
+      python3-devel \
       python3-tkinter
     ;;
   pacman)
@@ -59,3 +64,4 @@ case "$mgr" in
 esac
 
 python3 --version
+python3 -c "import venv, ensurepip; print('venv+ensurepip OK')"

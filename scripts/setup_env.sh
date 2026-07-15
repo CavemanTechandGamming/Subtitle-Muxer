@@ -24,16 +24,21 @@ fi
 echo "[1/4] Creating virtual environment at .venv ..."
 "$PYTHON" -m venv .venv
 
+# Prefer the venv interpreter directly (more reliable than activate in CI).
+VENV_PY="$ROOT/.venv/bin/python"
+if [[ ! -x "$VENV_PY" ]]; then
+  echo "ERROR: venv python was not created at $VENV_PY"
+  exit 1
+fi
+
 echo "[2/4] Upgrading pip ..."
-# shellcheck disable=SC1091
-source .venv/bin/activate
-python -m pip install --upgrade pip
+"$VENV_PY" -m pip install --upgrade pip
 
 echo "[3/4] Installing dependencies from requirements/requirements.txt ..."
-python -m pip install -r requirements/requirements.txt
+"$VENV_PY" -m pip install -r requirements/requirements.txt
 
 echo "[4/4] Downloading bundled FFmpeg into the virtualenv (first run may take a bit) ..."
-python -c "from src.core.ffmpeg_paths import ensure_ffmpeg_on_path, ffmpeg_binary, ffprobe_binary; ensure_ffmpeg_on_path(); print('ffmpeg :', ffmpeg_binary()); print('ffprobe:', ffprobe_binary())"
+"$VENV_PY" -c "from src.core.ffmpeg_paths import ensure_ffmpeg_on_path, ffmpeg_binary, ffprobe_binary; ensure_ffmpeg_on_path(); print('ffmpeg :', ffmpeg_binary()); print('ffprobe:', ffprobe_binary())"
 
 echo
 echo "Setup complete. Activate later with:"
