@@ -83,12 +83,15 @@ python -m src
 
 ## Build locally
 
-PyInstaller outputs (gitignored) include the version from `src/__init__.py`:
+Windows builds **both** portable (single `.exe`) and installable (folder).  
+Linux and macOS default to **portable only**.
 
-| Type | Example (`1.0.0` on Windows) |
-|------|------------------------------|
-| **portable** (single file) | `dist/windows/1.0.0/portable/SubtitleMuxer-1.0.0.exe` |
-| **installable** (folder) | `dist/windows/1.0.0/installable/SubtitleMuxer-1.0.0/` |
+| Type | Example |
+|------|---------|
+| Windows portable | `dist/windows/0.1.0/portable/SubtitleMuxer-0.1.0.exe` |
+| Windows installable | `dist/windows/0.1.0/installable/SubtitleMuxer-0.1.0/` |
+| macOS Apple Silicon | `dist/macos-arm64/0.1.0/portable/SubtitleMuxer-0.1.0` |
+| macOS Intel | `dist/macos-intel/0.1.0/portable/SubtitleMuxer-0.1.0` |
 
 ```bat
 scripts\build_app.bat
@@ -96,6 +99,8 @@ scripts\build_app.bat
 
 ```bash
 ./scripts/build_app.sh
+# Optional: also build the folder layout
+SUBTITLE_MUXER_BUILD_KINDS=both ./scripts/build_app.sh
 ```
 
 ## GitHub Actions
@@ -104,20 +109,26 @@ Two manual workflows (no push/PR triggers):
 
 | Workflow | File | What it does |
 |----------|------|----------------|
-| **Build** | [`.github/workflows/build.yml`](.github/workflows/build.yml) | Matrix build → upload versioned artifacts only |
-| **Build and Release** | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Same builds → create a GitHub Release with versioned zips |
+| **Build** | [`.github/workflows/build.yml`](.github/workflows/build.yml) | Matrix build → upload versioned artifacts |
+| **Build and Release** | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Same builds → GitHub Release with versioned zips |
 
-Both default to Python **3.14** on Windows/macOS. Linux builds use each distro’s system Python inside containers.
+Windows/macOS default to Python **3.14**. Linux builds use each distro’s system Python in containers.
 
-Artifact names look like:
+### What gets built
+
+| Platform | Artifacts |
+|----------|-----------|
+| `windows` | portable **and** installable |
+| `macos-arm64` | portable only (Apple Silicon runner) |
+| `macos-intel` | portable only (Intel runner) |
+| `ubuntu` / `debian` / `mint` / `fedora` / `arch` | portable only |
 
 ```text
-subtitle-muxer-windows-1.0.0-portable
-subtitle-muxer-ubuntu-1.0.0-portable
-subtitle-muxer-debian-1.0.0-installable
-subtitle-muxer-mint-1.0.0-portable
-subtitle-muxer-fedora-1.0.0-portable
-subtitle-muxer-arch-1.0.0-installable
+subtitle-muxer-windows-0.1.0-portable
+subtitle-muxer-windows-0.1.0-installable
+subtitle-muxer-macos-arm64-0.1.0-portable
+subtitle-muxer-macos-intel-0.1.0-portable
+subtitle-muxer-ubuntu-0.1.0-portable
 ```
 
 ### Linux matrix
@@ -131,8 +142,6 @@ GitHub only hosts Ubuntu runners, so Linux flavours are built in Docker containe
 | `mint` | `linuxmintd/mint22.1-amd64` |
 | `fedora` | `fedora:latest` |
 | `arch` | `archlinux:latest` |
-
-Also built: `windows`, `macos`.
 
 ### Build only
 
@@ -151,10 +160,12 @@ gh run download
 2. Actions → **Build and Release** → **Run workflow**
 3. Creates tag `vX.Y.Z` and attaches zips such as:
 
-   - `SubtitleMuxer-1.0.0-windows-portable.zip`
-   - `SubtitleMuxer-1.0.0-ubuntu-portable.zip`
-   - `SubtitleMuxer-1.0.0-debian-installable.zip`
-   - (same portable/installable pattern for `mint`, `fedora`, `arch`, and `macos`)
+   - `SubtitleMuxer-0.1.0-windows-portable.zip`
+   - `SubtitleMuxer-0.1.0-windows-installable.zip`
+   - `SubtitleMuxer-0.1.0-macos-arm64-portable.zip`
+   - `SubtitleMuxer-0.1.0-macos-intel-portable.zip`
+   - `SubtitleMuxer-0.1.0-ubuntu-portable.zip`
+   - (same portable pattern for `debian`, `mint`, `fedora`, `arch`)
 
 Optional inputs: **draft**, **prerelease**.
 

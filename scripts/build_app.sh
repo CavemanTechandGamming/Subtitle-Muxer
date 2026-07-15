@@ -1,25 +1,42 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────────
-# build_app.sh — versioned portable + installable PyInstaller builds
+# build_app.sh — versioned PyInstaller builds (Linux / macOS)
+#
 # Version comes from src/__init__.py (single source of truth).
-# Outputs (example for 1.0.0):
-#   dist/<platform>/1.0.0/portable/SubtitleMuxer-1.0.0
-#   dist/<platform>/1.0.0/installable/SubtitleMuxer-1.0.0/...
+#
+# By default builds a single portable (onefile) binary — Linux/mac only need one
+# packaging style. Set SUBTITLE_MUXER_BUILD_KINDS=both to also build installable.
+#
+# Outputs (example):
+#   dist/macos-arm64/0.1.0/portable/SubtitleMuxer-0.1.0
+#   dist/ubuntu/0.1.0/portable/SubtitleMuxer-0.1.0
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# CI can force a distro label (ubuntu/debian/mint/fedora/arch) via env.
+# CI / local override for the platform folder label.
 if [[ -n "${SUBTITLE_MUXER_PLATFORM:-}" ]]; then
   PLATFORM="$SUBTITLE_MUXER_PLATFORM"
 else
   uname_s="$(uname -s | tr '[:upper:]' '[:lower:]')"
   case "$uname_s" in
-    linux*)  PLATFORM="linux" ;;
-    darwin*) PLATFORM="macos" ;;
-    msys*|cygwin*|mingw*) PLATFORM="windows" ;;
+    linux*)
+      PLATFORM="linux"
+      ;;
+    darwin*)
+      # Distinguish Apple Silicon vs Intel for artifact naming.
+      machine="$(uname -m)"
+      if [[ "$machine" == "arm64" ]]; then
+        PLATFORM="macos-arm64"
+      else
+        PLATFORM="macos-intel"
+      fi
+      ;;
+    msys*|cygwin*|mingw*)
+      PLATFORM="windows"
+      ;;
     *)
       echo "ERROR: Unsupported OS: $(uname -s)"
       exit 1
@@ -27,9 +44,13 @@ else
   esac
 fi
 
+# portable | installable | both  (default: portable only)
+BUILD_KINDS="${SUBTITLE_MUXER_BUILD_KINDS:-portable}"
+
 echo
 echo "=== Subtitle Muxer — PyInstaller build (${PLATFORM}) ==="
 echo "Working directory: $ROOT"
+echo "Build kinds: ${BUILD_KINDS}"
 echo
 
 if [[ ! -x .venv/bin/python ]]; then
@@ -49,11 +70,8 @@ fi
 VERSION="$(python scripts/read_version.py)"
 APP_NAME="SubtitleMuxer-${VERSION}"
 echo "App version: ${VERSION}"
-echo "Artifact names: subtitle-muxer-${PLATFORM}-${VERSION}-portable / installable"
 echo
 
-# Shared flags for CustomTkinter + tkinterdnd2 + static-ffmpeg
-# --paths=. keeps ``import src...`` working when the entry script lives under src/
 COMMON_ARGS=(
   --noconfirm
   --clean
@@ -68,30 +86,53 @@ COMMON_ARGS=(
   --hidden-import=static_ffmpeg
 )
 
-echo "[1/2] Building portable (onefile) ..."
-rm -rf "dist/${PLATFORM}/${VERSION}/portable" "build/${PLATFORM}/${VERSION}/portable"
-mkdir -p "dist/${PLATFORM}/${VERSION}/portable" "build/${PLATFORM}/${VERSION}/portable"
+build_portable() {
+  echo "Building portable (onefile) ..."
+  rm -rf "dist/${PLATFORM}/${VERSION}/portable" "build/${PLATFORM}/${VERSION}/portable"
+  mkdir -p "dist/${PLATFORM}/${VERSION}/portable" "build/${PLATFORM}/${VERSION}/portable"
 
-pyinstaller "${COMMON_ARGS[@]}" \
-  --onefile \
-  --distpath "dist/${PLATFORM}/${VERSION}/portable" \
-  --workpath "build/${PLATFORM}/${VERSION}/portable" \
-  --specpath "build/${PLATFORM}/${VERSION}/portable" \
-  src/__main__.py
+  pyinstaller "${COMMON_ARGS[@]}" \
+    --onefile \
+    --distpath "dist/${PLATFORM}/${VERSION}/portable" \
+    --workpath "build/${PLATFORM}/${VERSION}/portable" \
+    --specpath "build/${PLATFORM}/${VERSION}/portable" \
+    src/__main__.py
 
-echo "[2/2] Building installable (onedir) ..."
-rm -rf "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
-mkdir -p "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
+  echo "  -> dist/${PLATFORM}/${VERSION}/portable/${APP_NAME}"
+}
 
-pyinstaller "${COMMON_ARGS[@]}" \
-  --onedir \
-  --distpath "dist/${PLATFORM}/${VERSION}/installable" \
-  --workpath "build/${PLATFORM}/${VERSION}/installable" \
-  --specpath "build/${PLATFORM}/${VERSION}/installable" \
-  src/__main__.py
+build_installable() {
+  echo "Building installable (onedir) ..."
+  rm -rf "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
+  mkdir -p "dist/${PLATFORM}/${VERSION}/installable" "build/${PLATFORM}/${VERSION}/installable"
+
+  pyinstaller "${COMMON_ARGS[@]}" \
+    --onedir \
+    --distpath "dist/${PLATFORM}/${VERSION}/installable" \
+    --workpath "build/${PLATFORM}/${VERSION}/installable" \
+    --specpath "build/${PLATFORM}/${VERSION}/installable" \
+    src/__main__.py
+
+  echo "  -> dist/${PLATFORM}/${VERSION}/installable/${APP_NAME}/"
+}
+
+case "$BUILD_KINDS" in
+  portable)
+    build_portable
+    ;;
+  installable)
+    build_installable
+    ;;
+  both)
+    build_portable
+    build_installable
+    ;;
+  *)
+    echo "ERROR: SUBTITLE_MUXER_BUILD_KINDS must be portable, installable, or both (got: ${BUILD_KINDS})"
+    exit 1
+    ;;
+esac
 
 echo
-echo "Build complete:"
-echo "  Portable    : dist/${PLATFORM}/${VERSION}/portable/${APP_NAME}"
-echo "  Installable : dist/${PLATFORM}/${VERSION}/installable/${APP_NAME}/"
+echo "Build complete."
 echo

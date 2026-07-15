@@ -3,13 +3,14 @@
 # Trigger: Actions → Build → Run workflow
 # Also callable from the Build and Release workflow.
 #
-# Artifact names include the app version from src/__init__.py, e.g.:
-#   subtitle-muxer-windows-1.0.0-portable
-#   subtitle-muxer-ubuntu-1.0.0-portable
-#   subtitle-muxer-fedora-1.0.0-installable
+# Artifact examples:
+#   subtitle-muxer-windows-0.1.0-portable
+#   subtitle-muxer-windows-0.1.0-installable
+#   subtitle-muxer-macos-arm64-0.1.0-portable
+#   subtitle-muxer-macos-intel-0.1.0-portable
+#   subtitle-muxer-ubuntu-0.1.0-portable
 #
-# Linux variants (Ubuntu / Debian / Mint / Fedora / Arch) build inside matching
-# containers on ubuntu-latest — GitHub does not provide native runners for each.
+# Linux/macOS: portable only. Windows: portable + installable.
 # =============================================================================
 name: Build
 
@@ -47,8 +48,20 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-          - os: macos-latest
-            platform: macos
+            upload_installable: true
+          # Apple Silicon (arm64)
+          - os: macos-15
+            platform: macos-arm64
+            upload_installable: false
+          # Intel Mac
+          - os: macos-13
+            platform: macos-intel
+            upload_installable: false
+
+    env:
+      SUBTITLE_MUXER_PLATFORM: ${{ matrix.platform }}
+      # Linux/mac use portable only; Windows bat ignores this and always builds both.
+      SUBTITLE_MUXER_BUILD_KINDS: portable
 
     steps:
       - name: Checkout
@@ -68,6 +81,7 @@ jobs:
           VERSION="$(python scripts/read_version.py)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "App version: ${VERSION}"
+          uname -m
 
       - name: Setup env + build (Windows)
         if: matrix.platform == 'windows'
@@ -79,7 +93,7 @@ jobs:
           if errorlevel 1 exit /b 1
 
       - name: Setup env + build (macOS)
-        if: matrix.platform == 'macos'
+        if: startsWith(matrix.platform, 'macos')
         run: |
           chmod +x scripts/setup_env.sh scripts/build_app.sh scripts/read_version.py
           ./scripts/setup_env.sh
@@ -93,7 +107,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload installable artifact
+      - name: Upload installable artifact (Windows only)
+        if: matrix.upload_installable
         uses: actions/upload-artifact@v7
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
@@ -101,7 +116,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # ── Linux distros (containers) ───────────────────────────────────────────
+  # ── Linux distros (containers) — portable only ───────────────────────────
   build-linux:
     name: Build (${{ matrix.platform }})
     runs-on: ubuntu-latest
@@ -119,7 +134,6 @@ jobs:
             image: debian:bookworm
             pkgs: apt
           - platform: mint
-            # Official Linux Mint Docker images (Ubuntu-based)
             image: linuxmintd/mint22.1-amd64
             pkgs: apt
           - platform: fedora
@@ -131,6 +145,7 @@ jobs:
 
     env:
       SUBTITLE_MUXER_PLATFORM: ${{ matrix.platform }}
+      SUBTITLE_MUXER_BUILD_KINDS: portable
 
     steps:
       - name: Checkout
@@ -159,13 +174,5 @@ jobs:
         with:
           name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-portable
           path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/portable/**
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload installable artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: subtitle-muxer-${{ matrix.platform }}-${{ steps.version.outputs.version }}-installable
-          path: dist/${{ matrix.platform }}/${{ steps.version.outputs.version }}/installable/**
           if-no-files-found: error
           retention-days: 30
