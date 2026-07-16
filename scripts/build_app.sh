@@ -17,6 +17,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Embed icon assets so the packaged app can set a native window icon.
+ICON_PNG="assets/subtitle-muxer-icon-steampunk.png"
+ICON_PNG_256="assets/subtitle-muxer-icon-steampunk-256.png"
+if [[ ! -f "$ICON_PNG" ]]; then
+  echo "ERROR: Missing icon PNG: $ICON_PNG"
+  exit 1
+fi
+
 # CI / local override for the platform folder label.
 if [[ -n "${SUBTITLE_MUXER_PLATFORM:-}" ]]; then
   PLATFORM="$SUBTITLE_MUXER_PLATFORM"
@@ -79,6 +87,7 @@ COMMON_ARGS=(
   --windowed
   --name "$APP_NAME"
   --paths=.
+  --add-data "${ICON_PNG}:."
   --collect-all customtkinter
   --collect-all tkinterdnd2
   --collect-all static_ffmpeg
@@ -86,6 +95,9 @@ COMMON_ARGS=(
   --hidden-import=ffmpeg
   --hidden-import=static_ffmpeg
 )
+if [[ -f "$ICON_PNG_256" ]]; then
+  COMMON_ARGS+=(--add-data "${ICON_PNG_256}:.")
+fi
 
 build_portable() {
   echo "Building portable (onefile) ..."

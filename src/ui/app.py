@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import sys
 from pathlib import Path
 
 import customtkinter as ctk
@@ -48,9 +49,64 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
+        # Keep a reference so Tk doesn't garbage-collect the icon image.
+        self._tk_icon = None
+        self._set_window_icon()
+        # CustomTkinter / Windows can reset the title-bar icon during first map;
+        # re-apply once the window is actually shown.
+        self.after(0, self._set_window_icon)
+
         self._build_layout()
         self._wire_drag_and_drop()
         self._poll_after_id = self.after(100, self._drain_log_queue)
+
+    def _asset_path(self, *parts: str) -> Path:
+        """Resolve an asset under ``assets/`` (dev) or PyInstaller ``_MEIPASS``."""
+
+        if hasattr(sys, "_MEIPASS"):
+            return Path(sys._MEIPASS).joinpath(*parts)  # type: ignore[attr-defined]
+        repo_root = Path(__file__).resolve().parents[2]
+        return repo_root.joinpath("assets", *parts)
+
+    def _set_window_icon(self) -> None:
+        """Set the window/taskbar icon (best-effort).
+
+        On Windows, the title-bar icon needs a real ``.ico`` via ``iconbitmap``;
+        ``iconphoto`` alone often leaves the default Tk blue cube.
+        """
+
+        ico_path = self._asset_path("SubtitleMuxer.ico")
+        png_path = self._asset_path("subtitle-muxer-icon-steampunk-256.png")
+        if not png_path.exists():
+            png_path = self._asset_path("subtitle-muxer-icon-steampunk.png")
+
+        # Windows title bar / Alt-Tab: .ico is the reliable path.
+        if sys.platform == "win32" and ico_path.exists():
+            try:
+                self.iconbitmap(default=str(ico_path.resolve()))
+            except Exception:
+                try:
+                    self.iconbitmap(str(ico_path.resolve()))
+                except Exception:
+                    pass
+
+        # Cross-platform (and a second chance on Windows): PNG via iconphoto.
+        if not png_path.exists():
+            return
+        try:
+            from PIL import Image, ImageTk
+        except Exception:
+            return
+        try:
+            img = Image.open(png_path).convert("RGBA")
+            if img.size != (256, 256):
+                img = img.resize((256, 256), Image.Resampling.LANCZOS)
+            tk_img = ImageTk.PhotoImage(img)
+            self.iconphoto(True, tk_img)
+            self._tk_icon = tk_img
+        except Exception:
+            # Never crash the app just because an icon failed to load.
+            return
 
     # ── layout ──────────────────────────────────────────────────────────
 

@@ -39,6 +39,9 @@ WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
+#ifdef MyAppIcon
+SetupIconFile={#MyAppIcon}
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

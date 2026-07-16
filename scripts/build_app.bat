@@ -45,6 +45,22 @@ echo.
 REM Shared PyInstaller flags for CustomTkinter + tkinterdnd2 + static-ffmpeg
 set "COMMON_ARGS=--noconfirm --clean --windowed --name %APP_NAME% --paths=. --collect-all customtkinter --collect-all tkinterdnd2 --collect-all static_ffmpeg --hidden-import=tkinterdnd2 --hidden-import=ffmpeg --hidden-import=static_ffmpeg"
 
+REM Icon embedding: PNGs for runtime window icon; committed .ico for exe + title bar.
+set "ICON_PNG=%CD%\assets\subtitle-muxer-icon-steampunk.png"
+set "ICON_PNG_256=%CD%\assets\subtitle-muxer-icon-steampunk-256.png"
+set "ICON_ICO=%CD%\assets\SubtitleMuxer.ico"
+if not exist "%ICON_PNG%" (
+    echo ERROR: Icon PNG not found: %ICON_PNG%
+    exit /b 1
+)
+if not exist "%ICON_ICO%" (
+    echo Committed .ico missing; generating %ICON_ICO% from %ICON_PNG% ...
+    python scripts\generate_windows_ico.py --input "%ICON_PNG%" --output "%ICON_ICO%"
+    if errorlevel 1 exit /b 1
+) else (
+    echo Using committed icon: %ICON_ICO%
+)
+
 echo [1/3] Building portable (onefile) ...
 if exist "dist\%PLATFORM%\%VERSION%\portable" rmdir /s /q "dist\%PLATFORM%\%VERSION%\portable"
 if exist "build\%PLATFORM%\%VERSION%\portable" rmdir /s /q "build\%PLATFORM%\%VERSION%\portable"
@@ -52,6 +68,10 @@ mkdir "dist\%PLATFORM%\%VERSION%\portable" 2>nul
 mkdir "build\%PLATFORM%\%VERSION%\portable" 2>nul
 
 python -m PyInstaller %COMMON_ARGS% ^
+    --icon "%ICON_ICO%" ^
+    --add-data "%ICON_PNG%;." ^
+    --add-data "%ICON_ICO%;." ^
+    --add-data "%ICON_PNG_256%;." ^
     --onefile ^
     --distpath "dist\%PLATFORM%\%VERSION%\portable" ^
     --workpath "build\%PLATFORM%\%VERSION%\portable" ^
@@ -69,6 +89,10 @@ mkdir "dist\%PLATFORM%\%VERSION%\payload" 2>nul
 mkdir "build\%PLATFORM%\%VERSION%\payload" 2>nul
 
 python -m PyInstaller %COMMON_ARGS% ^
+    --icon "%ICON_ICO%" ^
+    --add-data "%ICON_PNG%;." ^
+    --add-data "%ICON_ICO%;." ^
+    --add-data "%ICON_PNG_256%;." ^
     --onedir ^
     --distpath "dist\%PLATFORM%\%VERSION%\payload" ^
     --workpath "build\%PLATFORM%\%VERSION%\payload" ^
@@ -110,6 +134,7 @@ mkdir "%SETUP_DIR%" 2>nul
     "/DMyAppExeName=%APP_NAME%.exe" ^
     "/DMyAppSource=%PAYLOAD_DIR%" ^
     "/DMyAppOutput=%SETUP_DIR%" ^
+    "/DMyAppIcon=%ICON_ICO%" ^
     "scripts\windows\SubtitleMuxer.iss"
 if errorlevel 1 (
     echo ERROR: Inno Setup compile failed.

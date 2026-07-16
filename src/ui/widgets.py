@@ -137,13 +137,35 @@ class FileDropZone(ctk.CTkFrame):
             self.set_path(Path(chosen))
 
 
-class SubtitleTrackList(ctk.CTkScrollableFrame):
-    """Scrollable checklist of subtitle tracks with Select All."""
+class _AutoHideScrollableFrame(ctk.CTkScrollableFrame):
+    """CTkScrollableFrame that hides the scrollbar when content fits."""
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        # CTk always shows the bar; hide it when top==0 and bottom==1.
+        self._parent_canvas.configure(
+            yscrollcommand=lambda top, bottom: self._auto_hide_scrollbar(top, bottom)
+        )
+
+    def _auto_hide_scrollbar(self, top, bottom) -> None:
+        if float(top) <= 0.0 and float(bottom) >= 1.0:
+            self._scrollbar.grid_remove()
+        else:
+            self._scrollbar.grid()
+        self._scrollbar.set(top, bottom)
+
+
+class SubtitleTrackList(ctk.CTkFrame):
+    """Checklist of subtitle tracks with Select All (scrolls only when needed)."""
+
+    _EMPTY_NO_SOURCE = "Load a source video to list subtitle tracks."
+    _EMPTY_NO_TRACKS = "No subtitle tracks found in the source video."
 
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self._track_vars: list[tuple[SubtitleTrack, BooleanVar]] = []
         self._select_all_var = BooleanVar(value=True)
+        self._rows: list[ctk.CTkCheckBox] = []
 
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=4, pady=(4, 8))
@@ -165,41 +187,33 @@ class SubtitleTrackList(ctk.CTkScrollableFrame):
         )
         self._status.pack(side="right")
 
+        # Tracks live in a scrollable body so Select All stays pinned above.
+        self._body = _AutoHideScrollableFrame(self, fg_color="transparent")
+        self._body.pack(fill="both", expand=True)
+
         self._empty = ctk.CTkLabel(
-            self,
-            text="Load a source video to list subtitle tracks.",
+            self._body,
+            text=self._EMPTY_NO_SOURCE,
             text_color=("gray60", "gray55"),
         )
         self._empty.pack(pady=20)
 
-        self._rows: list[ctk.CTkCheckBox] = []
-
     def set_tracks(self, tracks: list[SubtitleTrack]) -> None:
         """Replace the checklist with new tracks (all selected by default)."""
-        for row in self._rows:
-            row.destroy()
-        self._rows.clear()
-        self._track_vars.clear()
-
-        if self._empty.winfo_exists():
-            self._empty.pack_forget()
+        self._clear_rows()
 
         if not tracks:
-            self._empty = ctk.CTkLabel(
-                self,
-                text="No subtitle tracks found in the source video.",
-                text_color=("gray60", "gray55"),
-            )
-            self._empty.pack(pady=20)
+            self._show_empty(self._EMPTY_NO_TRACKS)
             self._status.configure(text="0 tracks")
             self._select_all_var.set(False)
             return
 
+        self._hide_empty()
         self._select_all_var.set(True)
         for track in tracks:
             var = BooleanVar(value=True)
             cb = ctk.CTkCheckBox(
-                self,
+                self._body,
                 text=track.display_label(),
                 variable=var,
                 command=self._sync_select_all_state,
@@ -214,7 +228,11 @@ class SubtitleTrackList(ctk.CTkScrollableFrame):
         return len(self._track_vars)
 
     def clear(self) -> None:
-        self.set_tracks([])
+        """Reset to the pre-load empty state (no source selected)."""
+        self._clear_rows()
+        self._show_empty(self._EMPTY_NO_SOURCE)
+        self._status.configure(text="No source loaded")
+        self._select_all_var.set(True)
 
     def selected_indices(self) -> list[int] | None:
         """
@@ -231,6 +249,28 @@ class SubtitleTrackList(ctk.CTkScrollableFrame):
             return None  # caller maps all with -map 1:s
         return selected
 
+    def _clear_rows(self) -> None:
+        for row in self._rows:
+            row.destroy()
+        self._rows.clear()
+        self._track_vars.clear()
+
+    def _hide_empty(self) -> None:
+        if self._empty.winfo_exists():
+            self._empty.pack_forget()
+
+    def _show_empty(self, text: str) -> None:
+        self._hide_empty()
+        if not self._empty.winfo_exists():
+            self._empty = ctk.CTkLabel(
+                self._body,
+                text=text,
+                text_color=("gray60", "gray55"),
+            )
+        else:
+            self._empty.configure(text=text)
+        self._empty.pack(pady=20)
+
     def _on_select_all(self) -> None:
         checked = self._select_all_var.get()
         for _, var in self._track_vars:
@@ -241,3 +281,4 @@ class SubtitleTrackList(ctk.CTkScrollableFrame):
             return
         all_on = all(v.get() for _, v in self._track_vars)
         self._select_all_var.set(all_on)
+
