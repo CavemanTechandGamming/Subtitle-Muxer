@@ -123,19 +123,54 @@ jobs:
                 echo "::error::Artifact version ${art_version} does not match src __version__ ${VERSION}"
                 exit 1
               fi
-              binary="$(find "$dir" -type f -executable | head -n 1)"
-              if [[ -z "$binary" ]]; then
-                # Fallback: any non-hidden file (artifact download may drop +x)
-                binary="$(find "$dir" -type f ! -name '.*' | head -n 1)"
+
+              echo "Artifact contents for ${name}:"
+              find "$dir" -type f -printf '  %12s  %p\n' | sort -nr || find "$dir" -type f -exec ls -la {} \;
+
+              # Prefer a .app bundle if present (macOS), else the largest SubtitleMuxer* file.
+              app_bundle="$(find "$dir" -type d -name '*.app' | head -n 1 || true)"
+              if [[ -n "$app_bundle" ]]; then
+                bundle_size="$(du -sb "$app_bundle" | awk '{print $1}')"
+                if [[ "$bundle_size" -lt 5000000 ]]; then
+                  echo "::error::macOS .app in ${name} is only ${bundle_size} bytes (expected multi-MB build)"
+                  exit 1
+                fi
+                tar_name="SubtitleMuxer-${VERSION}-${platform}.tar.gz"
+                tar -C "$(dirname "$app_bundle")" -czf "$GITHUB_WORKSPACE/release-assets/${tar_name}" "$(basename "$app_bundle")"
+                echo "Created ${tar_name} from $(basename "$app_bundle") (${bundle_size} bytes)"
+              else
+                # Largest matching binary (do NOT use -executable: artifact download often
+                # drops +x, and tiny helper files can be marked executable and win find -head).
+                binary="$(
+                  find "$dir" -type f \( -name 'SubtitleMuxer-*' -o -name 'SubtitleMuxer' \) \
+                    ! -name '*.spec' ! -name '*.toc' ! -name '*.pyz' \
+                    -printf '%s\t%p\n' 2>/dev/null \
+                  | sort -nr \
+                  | head -n 1 \
+                  | cut -f2-
+                )"
+                if [[ -z "$binary" ]]; then
+                  binary="$(
+                    find "$dir" -type f ! -name '.*' -printf '%s\t%p\n' 2>/dev/null \
+                    | sort -nr \
+                    | head -n 1 \
+                    | cut -f2-
+                  )"
+                fi
+                if [[ -z "$binary" ]]; then
+                  echo "::error::No binary found in ${name}"
+                  exit 1
+                fi
+                size="$(wc -c < "$binary" | tr -d ' ')"
+                if [[ "$size" -lt 5000000 ]]; then
+                  echo "::error::Binary in ${name} is only ${size} bytes (picked: ${binary}). Expected multi-MB PyInstaller build."
+                  exit 1
+                fi
+                chmod +x "$binary"
+                tar_name="SubtitleMuxer-${VERSION}-${platform}.tar.gz"
+                tar -C "$(dirname "$binary")" -czf "$GITHUB_WORKSPACE/release-assets/${tar_name}" "$(basename "$binary")"
+                echo "Created ${tar_name} from $(basename "$binary") (${size} bytes)"
               fi
-              if [[ -z "$binary" ]]; then
-                echo "::error::No binary found in ${name}"
-                exit 1
-              fi
-              chmod +x "$binary"
-              tar_name="SubtitleMuxer-${VERSION}-${platform}.tar.gz"
-              tar -C "$(dirname "$binary")" -czf "$GITHUB_WORKSPACE/release-assets/${tar_name}" "$(basename "$binary")"
-              echo "Created ${tar_name}"
 
             else
               echo "::error::Unexpected artifact name: ${name}"
