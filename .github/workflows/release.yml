@@ -5,12 +5,12 @@
 # Version tag/assets come from src/__init__.py (__version__).
 # Bump that value before running this workflow.
 #
-# Release zips (only Windows includes portable/installer):
+# Release assets:
 #   SubtitleMuxer-0.1.0-windows-portable.zip
-#   SubtitleMuxer-0.1.0-windows-installer.zip
-#   SubtitleMuxer-0.1.0-mac-apple-silicon.zip
-#   SubtitleMuxer-0.1.0-mac-intel.zip
-#   SubtitleMuxer-0.1.0-ubuntu.zip
+#   SubtitleMuxer-0.1.0-windows-setup.exe
+#   SubtitleMuxer-0.1.0-mac-apple-silicon.tar.gz
+#   SubtitleMuxer-0.1.0-mac-intel.tar.gz
+#   SubtitleMuxer-0.1.0-ubuntu.tar.gz
 # =============================================================================
 name: Build and Release
 
@@ -91,32 +91,61 @@ jobs:
             [[ -d "$dir" ]] || continue
             name="$(basename "$dir")"
 
-            # Windows: only platform that includes portable | installer in the name
-            if [[ "$name" =~ ^subtitle-muxer-windows-(.+)-(portable|installer)$ ]]; then
+            if [[ "$name" =~ ^subtitle-muxer-windows-(.+)-portable$ ]]; then
               art_version="${BASH_REMATCH[1]}"
-              kind="${BASH_REMATCH[2]}"
-              zip_name="SubtitleMuxer-${VERSION}-windows-${kind}.zip"
+              if [[ "$art_version" != "$VERSION" ]]; then
+                echo "::error::Artifact version ${art_version} does not match src __version__ ${VERSION}"
+                exit 1
+              fi
+              zip_name="SubtitleMuxer-${VERSION}-windows-portable.zip"
+              (cd "$dir" && zip -r -9 "$GITHUB_WORKSPACE/release-assets/${zip_name}" .)
+              echo "Created ${zip_name}"
+
+            elif [[ "$name" =~ ^subtitle-muxer-windows-(.+)-setup$ ]]; then
+              art_version="${BASH_REMATCH[1]}"
+              if [[ "$art_version" != "$VERSION" ]]; then
+                echo "::error::Artifact version ${art_version} does not match src __version__ ${VERSION}"
+                exit 1
+              fi
+              setup_src="$(find "$dir" -type f -name '*-windows-setup.exe' | head -n 1)"
+              if [[ -z "$setup_src" ]]; then
+                echo "::error::No windows-setup.exe found in ${name}"
+                exit 1
+              fi
+              setup_name="SubtitleMuxer-${VERSION}-windows-setup.exe"
+              cp -f "$setup_src" "$GITHUB_WORKSPACE/release-assets/${setup_name}"
+              echo "Created ${setup_name}"
+
             elif [[ "$name" =~ ^subtitle-muxer-(mac-apple-silicon|mac-intel|ubuntu|debian|mint|fedora|arch)-(.+)$ ]]; then
               platform="${BASH_REMATCH[1]}"
               art_version="${BASH_REMATCH[2]}"
-              zip_name="SubtitleMuxer-${VERSION}-${platform}.zip"
+              if [[ "$art_version" != "$VERSION" ]]; then
+                echo "::error::Artifact version ${art_version} does not match src __version__ ${VERSION}"
+                exit 1
+              fi
+              binary="$(find "$dir" -type f -executable | head -n 1)"
+              if [[ -z "$binary" ]]; then
+                # Fallback: any non-hidden file (artifact download may drop +x)
+                binary="$(find "$dir" -type f ! -name '.*' | head -n 1)"
+              fi
+              if [[ -z "$binary" ]]; then
+                echo "::error::No binary found in ${name}"
+                exit 1
+              fi
+              chmod +x "$binary"
+              tar_name="SubtitleMuxer-${VERSION}-${platform}.tar.gz"
+              tar -C "$(dirname "$binary")" -czf "$GITHUB_WORKSPACE/release-assets/${tar_name}" "$(basename "$binary")"
+              echo "Created ${tar_name}"
+
             else
               echo "::error::Unexpected artifact name: ${name}"
               exit 1
             fi
-
-            if [[ "$art_version" != "$VERSION" ]]; then
-              echo "::error::Artifact version ${art_version} does not match src __version__ ${VERSION}"
-              exit 1
-            fi
-
-            (cd "$dir" && zip -r -9 "$GITHUB_WORKSPACE/release-assets/${zip_name}" .)
-            echo "Created ${zip_name}"
           done
 
-          count="$(find release-assets -type f -name '*.zip' | wc -l)"
+          count="$(find release-assets -type f | wc -l)"
           if [[ "$count" -lt 1 ]]; then
-            echo "::error::No release zips were created."
+            echo "::error::No release assets were created."
             exit 1
           fi
 

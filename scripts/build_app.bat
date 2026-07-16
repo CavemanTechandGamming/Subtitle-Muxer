@@ -1,12 +1,12 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 REM ----------------------------------------------------------------------------
-REM  build_app.bat - versioned portable + installer PyInstaller builds (Windows)
+REM  build_app.bat - Windows portable (onefile) + real Setup.exe (Inno Setup)
 REM  Version comes from src\__init__.py (single source of truth).
 REM
 REM  Outputs (example):
 REM    dist\windows\0.1.0\portable\SubtitleMuxer-0.1.0.exe
-REM    dist\windows\0.1.0\installer\SubtitleMuxer-0.1.0\...
+REM    dist\windows\0.1.0\setup\SubtitleMuxer-0.1.0-windows-setup.exe
 REM ----------------------------------------------------------------------------
 
 cd /d "%~dp0.."
@@ -40,14 +40,12 @@ if not defined VERSION (
 
 set "APP_NAME=SubtitleMuxer-%VERSION%"
 echo App version: %VERSION%
-echo Artifact names: subtitle-muxer-%PLATFORM%-%VERSION%-portable / installer
 echo.
 
 REM Shared PyInstaller flags for CustomTkinter + tkinterdnd2 + static-ffmpeg
-REM --paths=. keeps "import src..." working when the entry script lives under src/
 set "COMMON_ARGS=--noconfirm --clean --windowed --name %APP_NAME% --paths=. --collect-all customtkinter --collect-all tkinterdnd2 --collect-all static_ffmpeg --hidden-import=tkinterdnd2 --hidden-import=ffmpeg --hidden-import=static_ffmpeg"
 
-echo [1/2] Building portable (onefile) ...
+echo [1/3] Building portable (onefile) ...
 if exist "dist\%PLATFORM%\%VERSION%\portable" rmdir /s /q "dist\%PLATFORM%\%VERSION%\portable"
 if exist "build\%PLATFORM%\%VERSION%\portable" rmdir /s /q "build\%PLATFORM%\%VERSION%\portable"
 mkdir "dist\%PLATFORM%\%VERSION%\portable" 2>nul
@@ -64,26 +62,68 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/2] Building installer (onedir) ...
-if exist "dist\%PLATFORM%\%VERSION%\installer" rmdir /s /q "dist\%PLATFORM%\%VERSION%\installer"
-if exist "build\%PLATFORM%\%VERSION%\installer" rmdir /s /q "build\%PLATFORM%\%VERSION%\installer"
-mkdir "dist\%PLATFORM%\%VERSION%\installer" 2>nul
-mkdir "build\%PLATFORM%\%VERSION%\installer" 2>nul
+echo [2/3] Building onedir payload for Setup.exe ...
+if exist "dist\%PLATFORM%\%VERSION%\payload" rmdir /s /q "dist\%PLATFORM%\%VERSION%\payload"
+if exist "build\%PLATFORM%\%VERSION%\payload" rmdir /s /q "build\%PLATFORM%\%VERSION%\payload"
+mkdir "dist\%PLATFORM%\%VERSION%\payload" 2>nul
+mkdir "build\%PLATFORM%\%VERSION%\payload" 2>nul
 
 python -m PyInstaller %COMMON_ARGS% ^
     --onedir ^
-    --distpath "dist\%PLATFORM%\%VERSION%\installer" ^
-    --workpath "build\%PLATFORM%\%VERSION%\installer" ^
-    --specpath "build\%PLATFORM%\%VERSION%\installer" ^
+    --distpath "dist\%PLATFORM%\%VERSION%\payload" ^
+    --workpath "build\%PLATFORM%\%VERSION%\payload" ^
+    --specpath "build\%PLATFORM%\%VERSION%\payload" ^
     src\__main__.py
 if errorlevel 1 (
-    echo ERROR: installer build failed.
+    echo ERROR: onedir payload build failed.
+    exit /b 1
+)
+
+set "PAYLOAD_DIR=%CD%\dist\%PLATFORM%\%VERSION%\payload\%APP_NAME%"
+set "SETUP_DIR=%CD%\dist\%PLATFORM%\%VERSION%\setup"
+if not exist "%PAYLOAD_DIR%\%APP_NAME%.exe" (
+    echo ERROR: Expected payload exe not found:
+    echo   %PAYLOAD_DIR%\%APP_NAME%.exe
+    exit /b 1
+)
+
+echo [3/3] Building Setup.exe with Inno Setup ...
+set "ISCC="
+if exist "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
+if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"
+if not defined ISCC (
+    where ISCC >nul 2>&1
+    if not errorlevel 1 for /f "delims=" %%I in ('where ISCC') do set "ISCC=%%I"
+)
+if not defined ISCC (
+    echo ERROR: Inno Setup 6 compiler ^(ISCC.exe^) not found.
+    echo Install from https://jrsoftware.org/isinfo.php or: choco install innosetup -y
+    exit /b 1
+)
+
+if exist "%SETUP_DIR%" rmdir /s /q "%SETUP_DIR%"
+mkdir "%SETUP_DIR%" 2>nul
+
+"%ISCC%" /Q ^
+    "/DMyAppVersion=%VERSION%" ^
+    "/DMyAppExeName=%APP_NAME%.exe" ^
+    "/DMyAppSource=%PAYLOAD_DIR%" ^
+    "/DMyAppOutput=%SETUP_DIR%" ^
+    "scripts\windows\SubtitleMuxer.iss"
+if errorlevel 1 (
+    echo ERROR: Inno Setup compile failed.
+    exit /b 1
+)
+
+if not exist "%SETUP_DIR%\SubtitleMuxer-%VERSION%-windows-setup.exe" (
+    echo ERROR: Setup.exe was not created.
     exit /b 1
 )
 
 echo.
 echo Build complete:
-echo   Portable  : dist\%PLATFORM%\%VERSION%\portable\%APP_NAME%.exe
-echo   Installer : dist\%PLATFORM%\%VERSION%\installer\%APP_NAME%\
+echo   Portable : dist\%PLATFORM%\%VERSION%\portable\%APP_NAME%.exe
+echo   Setup    : dist\%PLATFORM%\%VERSION%\setup\SubtitleMuxer-%VERSION%-windows-setup.exe
 echo.
 exit /b 0

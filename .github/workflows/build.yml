@@ -3,9 +3,9 @@
 # Trigger: Actions → Build → Run workflow
 # Also callable from the Build and Release workflow.
 #
-# Artifact examples (only Windows includes portable/installer):
-#   subtitle-muxer-windows-0.1.0-portable
-#   subtitle-muxer-windows-0.1.0-installer
+# Artifact examples:
+#   subtitle-muxer-windows-0.1.0-portable   (onefile .exe)
+#   subtitle-muxer-windows-0.1.0-setup      (Inno Setup .exe)
 #   subtitle-muxer-mac-apple-silicon-0.1.0
 #   subtitle-muxer-mac-intel-0.1.0
 #   subtitle-muxer-ubuntu-0.1.0
@@ -47,19 +47,19 @@ jobs:
           - os: windows-latest
             platform: windows
             label: Windows
-            upload_installer: true
+            upload_setup: true
           - os: macos-15
             platform: mac-apple-silicon
             label: Mac Apple Silicon
-            upload_installer: false
+            upload_setup: false
           - os: macos-15-intel
             platform: mac-intel
             label: Mac Intel
-            upload_installer: false
+            upload_setup: false
 
     env:
       SUBTITLE_MUXER_PLATFORM: ${{ matrix.platform }}
-      # Mac/Linux: one packaged binary. Windows bat always builds portable + installer.
+      # Mac/Linux: one packaged binary. Windows bat builds portable + Setup.exe.
       SUBTITLE_MUXER_BUILD_KINDS: portable
 
     steps:
@@ -80,6 +80,13 @@ jobs:
           VERSION="$(python scripts/read_version.py)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "App version: ${VERSION}"
+
+      - name: Install Inno Setup (Windows)
+        if: matrix.platform == 'windows'
+        shell: cmd
+        run: |
+          choco install innosetup -y --no-progress
+          if errorlevel 1 exit /b 1
 
       - name: Setup env (Windows)
         if: matrix.platform == 'windows'
@@ -111,12 +118,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload Windows installer artifact
-        if: matrix.upload_installer
+      - name: Upload Windows setup artifact
+        if: matrix.upload_setup
         uses: actions/upload-artifact@v7
         with:
-          name: subtitle-muxer-windows-${{ steps.version.outputs.version }}-installer
-          path: dist/windows/${{ steps.version.outputs.version }}/installer/**
+          name: subtitle-muxer-windows-${{ steps.version.outputs.version }}-setup
+          path: dist/windows/${{ steps.version.outputs.version }}/setup/SubtitleMuxer-${{ steps.version.outputs.version }}-windows-setup.exe
           if-no-files-found: error
           retention-days: 30
 

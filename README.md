@@ -1,7 +1,7 @@
 # Subtitle Muxer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases/tag/v0.1.0)
+[![Status](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases/tag/v0.1.1)
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases)
 
@@ -34,10 +34,11 @@ Copy subtitle tracks from one video onto another — for example an original rip
 ## Download
 
 1. Open this repository’s **[Releases](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases)** page.
-2. Download the zip for your OS:
-   - **Windows** — `…-windows-portable` (single `.exe`) or `…-windows-installer` (folder)
-   - **Mac** — `…-mac-apple-silicon` or `…-mac-intel`
-   - **Linux** — `…-<distro>` (e.g. `…-ubuntu`)
+2. Download the file for your OS:
+   - **Windows portable** — `…-windows-portable.zip` (extract and run the `.exe`)
+   - **Windows installer** — `…-windows-setup.exe` (run the Setup wizard)
+   - **Mac** — `…-mac-apple-silicon.tar.gz` or `…-mac-intel.tar.gz`
+   - **Linux** — `…-<distro>.tar.gz` (e.g. `…-ubuntu.tar.gz`)
 3. Extract if needed, then run **Subtitle Muxer**. No separate FFmpeg install is required for normal use.
 
 ---
