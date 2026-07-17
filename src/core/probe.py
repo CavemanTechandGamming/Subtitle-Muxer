@@ -231,6 +231,98 @@ class ProbeResult:
     has_closed_captions: bool
 
 
+@dataclass(frozen=True)
+class DurationMismatch:
+    """Source and target durations differ enough to warrant a confirm dialog."""
+
+    source_seconds: float
+    target_seconds: float
+
+    @property
+    def delta_seconds(self) -> float:
+        return abs(self.source_seconds - self.target_seconds)
+
+
+# Warn when |source − target| is at least this many seconds.
+DURATION_MISMATCH_THRESHOLD_SECONDS = 2.0
+
+
+def duration_from_info(info: dict[str, Any]) -> float | None:
+    """Best-effort media duration in seconds from an ffprobe JSON blob."""
+
+    format_block = info.get("format") or {}
+    raw = format_block.get("duration")
+    if raw is not None and raw != "N/A":
+        try:
+            value = float(raw)
+            if value > 0:
+                return value
+        except (TypeError, ValueError):
+            pass
+
+    # Fall back to the longest video stream duration if format lacks one.
+    best: float | None = None
+    for stream in info.get("streams") or []:
+        if stream.get("codec_type") != "video":
+            continue
+        raw = stream.get("duration")
+        if raw is None or raw == "N/A":
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and (best is None or value > best):
+            best = value
+    return best
+
+
+def format_duration(seconds: float) -> str:
+    """Format seconds as ``H:MM:SS`` or ``M:SS`` for dialogs."""
+
+    total = max(0, int(round(seconds)))
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def probe_duration_seconds(path: Path | str) -> float | None:
+    """Return media duration in seconds, or None if unknown."""
+
+    path = Path(path).expanduser().resolve()
+    if not path.is_file():
+        raise ProbeError(f"File not found: {path}")
+    return duration_from_info(_probe(path))
+
+
+def check_duration_mismatch(
+    source: Path | str,
+    target: Path | str,
+    *,
+    threshold_seconds: float = DURATION_MISMATCH_THRESHOLD_SECONDS,
+) -> DurationMismatch | None:
+    """
+    Compare source vs target duration.
+
+    Returns a DurationMismatch when both durations are known and differ by
+    at least *threshold_seconds*. Returns None when durations match closely
+    enough, or when either duration cannot be determined (no false alarms).
+    """
+
+    source_dur = probe_duration_seconds(source)
+    target_dur = probe_duration_seconds(target)
+    if source_dur is None or target_dur is None:
+        return None
+
+    delta = abs(source_dur - target_dur)
+    if delta < threshold_seconds:
+        return None
+
+    return DurationMismatch(source_seconds=source_dur, target_seconds=target_dur)
+
+
 def probe_source(path: Path | str) -> ProbeResult:
     """Probe a source video once and return tracks + diagnostic summary."""
     path = Path(path).expanduser().resolve()

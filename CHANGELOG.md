@@ -8,6 +8,7 @@ The format is based on **Keep a Changelog** and this project adheres to **Semant
 
 ### Added
 - App icon (steampunk projector): transparent PNG master, `256×256` PNG, and multi-size Windows `.ico` (includes 256) under `assets/`.
+- Pre-mux **duration mismatch** warning when source and target lengths differ by 2+ seconds (confirm to continue).
 
 ### Fixed
 - Windows title-bar icon now uses the `.ico` (`iconbitmap`) instead of leaving the default Tk blue cube.

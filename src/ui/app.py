@@ -16,7 +16,13 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from src import __version__
 from src.core.muxer import MuxOptions, MuxerError, mux_subtitles
-from src.core.probe import ProbeError, assert_video_file, probe_source
+from src.core.probe import (
+    ProbeError,
+    assert_video_file,
+    check_duration_mismatch,
+    format_duration,
+    probe_source,
+)
 from src.core.settings import get_default_output_dir, set_default_output_dir
 from src.ui.about import show_about
 from src.ui.dialogs import ask_yes_no, show_error, show_info, show_warning
@@ -539,6 +545,36 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
             set_default_output_dir(folder)
         except ValueError:
             pass
+
+        try:
+            mismatch = check_duration_mismatch(source, target)
+        except ProbeError as exc:
+            show_error(self, "Probe failed", str(exc))
+            self._append_log(f"ERROR: {exc}")
+            return
+
+        if mismatch is not None:
+            source_len = format_duration(mismatch.source_seconds)
+            target_len = format_duration(mismatch.target_seconds)
+            delta = format_duration(mismatch.delta_seconds)
+            self._append_log(
+                f"Warning: duration mismatch — source {source_len}, "
+                f"target {target_len} (Δ {delta})."
+            )
+            if not ask_yes_no(
+                self,
+                "Duration mismatch",
+                (
+                    f"Source and target lengths differ by about {delta}.\n\n"
+                    f"Source:  {source_len}\n"
+                    f"Target:  {target_len}\n\n"
+                    "Subtitles may end early, start late, or feel out of sync "
+                    "if these are not the same cut of the video.\n\n"
+                    "Continue anyway?"
+                ),
+            ):
+                self._append_log("Mux cancelled — duration mismatch.")
+                return
 
         if output.exists():
             if not ask_yes_no(

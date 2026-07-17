@@ -17,6 +17,8 @@ Copy subtitle tracks from one video onto another — for example an original rip
 
 ![Mux complete](docs/images/mux-complete.png)
 
+![Duration mismatch warning](docs/images/duration-mismatch.png)
+
 ---
 
 ## Features
@@ -26,6 +28,7 @@ Copy subtitle tracks from one video onto another — for example an original rip
 - View every subtitle track (language, format, title) and choose which ones to copy
 - Set a default **save folder** and filename (remembered between sessions)
 - Output as **MKV** (recommended) or **MP4**
+- Warns before muxing when source and target lengths differ a lot
 - Watch FFmpeg progress in the built-in log panel
 - FFmpeg is bundled — no separate install required for normal use
 
