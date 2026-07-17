@@ -249,6 +249,17 @@ class SubtitleTrackList(ctk.CTkFrame):
             return None  # caller maps all with -map 1:s
         return selected
 
+    def selected_tracks(self) -> list[SubtitleTrack]:
+        """Return SubtitleTrack objects currently checked in the list."""
+
+        if not self._track_vars:
+            return []
+        indices = self.selected_indices()
+        if indices is None:
+            return [t for t, _ in self._track_vars]
+        wanted = set(indices)
+        return [t for t, _ in self._track_vars if t.subtitle_index in wanted]
+
     def _clear_rows(self) -> None:
         for row in self._rows:
             row.destroy()

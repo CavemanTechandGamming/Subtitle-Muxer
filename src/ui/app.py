@@ -21,6 +21,7 @@ from src.core.probe import (
     assert_video_file,
     check_duration_mismatch,
     format_duration,
+    mp4_incompatible_tracks,
     probe_source,
 )
 from src.core.settings import get_default_output_dir, set_default_output_dir
@@ -585,10 +586,26 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 return
 
         if container == "mp4":
-            self._append_log(
-                "Note: MP4 has limited subtitle codec support. "
-                "If mux fails, switch to MKV."
-            )
+            risky = mp4_incompatible_tracks(self.track_list.selected_tracks())
+            if risky:
+                lines = "\n".join(f"  • {t.display_label()}" for t in risky)
+                codecs = ", ".join(sorted({(t.codec or "?").lower() for t in risky}))
+                self._append_log(
+                    f"Warning: MP4 may not accept stream-copy of: {codecs}"
+                )
+                if not ask_yes_no(
+                    self,
+                    "MP4 may not work",
+                    (
+                        "These selected subtitle formats usually will not "
+                        "stream-copy into MP4:\n\n"
+                        f"{lines}\n\n"
+                        "MKV is recommended for these tracks.\n\n"
+                        "Continue with MP4 anyway? (likely to fail)"
+                    ),
+                ):
+                    self._append_log("Mux cancelled — switch to MKV and try again.")
+                    return
 
         options = MuxOptions(
             target=target,

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -67,6 +68,26 @@ class SubtitleTrack:
         if flags:
             parts.append(f"({', '.join(flags)})")
         return "  ".join(parts)
+
+
+# Codecs that usually stream-copy into MP4 without remux/convert.
+# Everything else (ASS, PGS, SRT, DVD, …) tends to fail with -c copy.
+_MP4_STREAM_COPY_OK = frozenset({
+    "mov_text",
+    "tx3g",
+})
+
+
+def is_mp4_stream_copy_friendly(codec: str) -> bool:
+    """True if *codec* is known to stream-copy into MP4 reliably."""
+
+    return (codec or "").strip().lower() in _MP4_STREAM_COPY_OK
+
+
+def mp4_incompatible_tracks(tracks: Sequence[SubtitleTrack]) -> list[SubtitleTrack]:
+    """Return selected tracks that are unlikely to stream-copy into MP4."""
+
+    return [t for t in tracks if not is_mp4_stream_copy_friendly(t.codec)]
 
 
 def _is_subtitle_stream(stream: dict[str, Any]) -> bool:

@@ -1,5 +1,7 @@
 # Subtitle Muxer
 
+> Draft layout for review — not the live README. Compare with `README.md` and swap when you’re happy.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/CavemanTechandGamming/Subtitle-Muxer/releases/tag/v0.1.1)
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
@@ -7,19 +9,9 @@
 
 Copy subtitle tracks from one video onto another — for example an original rip with softsubs onto an upscaled version that has none — with **no re-encoding** (stream copy).
 
----
-
-## Screenshots
+Here’s the main window once a source, target, and subtitle tracks are loaded:
 
 ![Main window](docs/images/main-window.png)
-
-![Destination settings](docs/images/destination.png)
-
-![Mux complete](docs/images/mux-complete.png)
-
-![Duration mismatch warning](docs/images/duration-mismatch.png)
-
-![MP4 incompatibility warning](docs/images/mp4-incompatible.png)
 
 ---
 
@@ -54,10 +46,31 @@ Copy subtitle tracks from one video onto another — for example an original rip
 1. Load the **Source** video that already has the subtitles you want.
 2. Load the **Target** video you want to keep (for example your upscaled file).
 3. Select the subtitle tracks to copy, or leave **Select All** checked.
-4. Choose a **Destination** folder and filename (or click **Same as target**).
+4. Choose a **Destination** folder and filename (or click **Same as target**). The destination section looks like this:
+
+   ![Destination settings](docs/images/destination.png)
+
 5. Pick **MKV** or **MP4**, then click **Mux Subtitles**.
 
-That’s it — the target’s video and audio stay as-is; only the selected subtitle streams are added.
+That’s it — the target’s video and audio stay as-is; only the selected subtitle streams are added. When a run finishes cleanly, the log panel shows the result:
+
+![Mux complete](docs/images/mux-complete.png)
+
+---
+
+## Built-in checks
+
+Before a mux starts, the app can pause on a couple of common problems so you’re not surprised later.
+
+If the source and target **lengths differ by more than a couple of seconds**, you’ll see a confirm dialog like this — continue if you know they’re the same cut, or cancel and double-check your files:
+
+![Duration mismatch warning](docs/images/duration-mismatch.png)
+
+If you choose **MP4** and the selected tracks use formats that usually won’t stream-copy (ASS, PGS, and similar), you’ll get a warning that points you toward MKV:
+
+![MP4 incompatibility warning](docs/images/mp4-incompatible.png)
+
+You can still continue with MP4 if you want; the dialog is there so a failed mux isn’t a surprise.
 
 ---
 
