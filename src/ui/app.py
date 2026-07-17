@@ -445,6 +445,22 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
             path = path.with_suffix(f".{container}")
         return path
 
+    @staticmethod
+    def _paths_are_same_file(a: Path, b: Path) -> bool:
+        """True if *a* and *b* point at the same filesystem object."""
+
+        a = Path(a).expanduser()
+        b = Path(b).expanduser()
+        try:
+            if a.exists() and b.exists():
+                return a.resolve().samefile(b.resolve())
+        except OSError:
+            pass
+        try:
+            return a.resolve() == b.resolve()
+        except OSError:
+            return a.as_posix().lower() == b.as_posix().lower()
+
     def _refresh_destination_preview(self) -> None:
         path = self._destination_path()
         if path is None:
@@ -497,6 +513,20 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
             )
             return
 
+        if self._paths_are_same_file(source, target):
+            show_warning(
+                self,
+                "Same file twice",
+                (
+                    "Source and Target are the same file.\n\n"
+                    "Pick two different videos — typically the rip with "
+                    "subtitles as Source, and the upscaled (or other) copy "
+                    "as Target."
+                ),
+            )
+            self._append_log("Mux blocked — source and target are the same file.")
+            return
+
         try:
             assert_video_file(target)
         except ProbeError as exc:
@@ -538,6 +568,24 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 self,
                 "Invalid folder",
                 f"Save folder does not exist:\n{folder}",
+            )
+            return
+
+        if self._paths_are_same_file(output, source) or self._paths_are_same_file(
+            output, target
+        ):
+            which = "source" if self._paths_are_same_file(output, source) else "target"
+            show_warning(
+                self,
+                "Output would overwrite an input",
+                (
+                    f"The destination path is the same as the {which} video.\n\n"
+                    "Choose a different filename or folder so the mux does not "
+                    "write over a file that is still being read."
+                ),
+            )
+            self._append_log(
+                f"Mux blocked — destination matches the {which} file."
             )
             return
 

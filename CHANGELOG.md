@@ -15,6 +15,7 @@ The format is based on **Keep a Changelog** and this project adheres to **Semant
 - Windows title-bar icon now uses the `.ico` (`iconbitmap`) instead of leaving the default Tk blue cube.
 - Subtitle track list no longer shows a scrollbar when nothing needs scrolling (empty / few tracks).
 - Removed the duplicate app title/version and tagline from the main window body (version stays in the title bar and About).
+- Block mux when source and target are the same file, or when the destination would overwrite either input.
 
 ## [0.1.1] - 2026-07-16
 

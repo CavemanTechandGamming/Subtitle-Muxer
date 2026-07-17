@@ -11,5 +11,6 @@ Suggested filenames (used by the root `README.md`):
 | `mux-complete.png` | Successful mux (log panel / result) |
 | `duration-mismatch.png` | Duration mismatch confirm dialog (source vs target lengths differ) |
 | `mp4-incompatible.png` | MP4 incompatibility confirm dialog (subtitle codecs that won’t stream-copy) |
+| `same-file-twice.png` | Same-file guard when Source and Target are the same path |
 
 Use PNG or WebP. Keep widths around 1200–1600px so they look sharp on GitHub.

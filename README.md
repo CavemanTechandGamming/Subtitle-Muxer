@@ -22,6 +22,7 @@ Here’s the main window once a source, target, and subtitle tracks are loaded:
 - Output as **MKV** (recommended) or **MP4**
 - Warns before muxing when source and target lengths differ a lot
 - Warns when selected subtitle codecs are unlikely to stream-copy into MP4
+- Blocks muxing if Source and Target are the same file, or if the destination would overwrite an input
 - Watch FFmpeg progress in the built-in log panel
 - FFmpeg is bundled — no separate install required for normal use
 
@@ -59,6 +60,12 @@ That’s it — the target’s video and audio stay as-is; only the selected sub
 ## Built-in checks
 
 Before a mux starts, the app can pause on a couple of common problems so you’re not surprised later.
+
+If **Source and Target are the same file**, muxing is blocked until you pick two different videos:
+
+![Same file twice](docs/images/same-file-twice.png)
+
+(The same idea applies if the destination path would overwrite the source or target file.)
 
 If the source and target **lengths differ by more than a couple of seconds**, you’ll see a confirm dialog like this — continue if you know they’re the same cut, or cancel and double-check your files:
 
