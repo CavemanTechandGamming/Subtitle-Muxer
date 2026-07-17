@@ -112,18 +112,12 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def _build_layout(self) -> None:
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)  # track list grows
-        self.grid_rowconfigure(6, weight=1)  # log grows
+        self.grid_rowconfigure(2, weight=1)  # track list grows
+        self.grid_rowconfigure(5, weight=1)  # log grows
 
         header_row = ctk.CTkFrame(self, fg_color="transparent")
         header_row.grid(row=0, column=0, sticky="ew", padx=20, pady=(18, 4))
         header_row.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            header_row,
-            text=f"Subtitle Muxer {__version__}",
-            font=ctk.CTkFont(size=22, weight="bold"),
-        ).grid(row=0, column=0, sticky="w")
 
         ctk.CTkButton(
             header_row,
@@ -133,19 +127,11 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
             fg_color=("gray40", "gray30"),
             hover_color=("gray35", "gray25"),
             command=lambda: show_about(self),
-        ).grid(row=0, column=1, sticky="e")
-
-        subtitle = ctk.CTkLabel(
-            self,
-            text="Copy subtitle tracks from a source video onto an upscaled target — stream copy, no re-encode.",
-            font=ctk.CTkFont(size=13),
-            text_color="gray65",
-        )
-        subtitle.grid(row=1, column=0, sticky="w", padx=20, pady=(0, 12))
+        ).grid(row=0, column=0, sticky="e")
 
         # Source + Target drop zones side by side
         files_row = ctk.CTkFrame(self, fg_color="transparent")
-        files_row.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 8))
+        files_row.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
         files_row.grid_columnconfigure(0, weight=1)
         files_row.grid_columnconfigure(1, weight=1)
 
@@ -169,7 +155,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         # Subtitle track list
         tracks_frame = ctk.CTkFrame(self, corner_radius=10, border_width=1, border_color=("gray60", "gray35"))
-        tracks_frame.grid(row=3, column=0, sticky="nsew", padx=16, pady=8)
+        tracks_frame.grid(row=2, column=0, sticky="nsew", padx=16, pady=8)
         tracks_frame.grid_columnconfigure(0, weight=1)
         tracks_frame.grid_rowconfigure(1, weight=1)
 
@@ -185,7 +171,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         # Destination (HandBrake-style save location)
         dest = ctk.CTkFrame(self, corner_radius=10, border_width=1, border_color=("gray60", "gray35"))
-        dest.grid(row=4, column=0, sticky="ew", padx=16, pady=(4, 4))
+        dest.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 4))
         dest.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -246,7 +232,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         # Output options + actions
         options = ctk.CTkFrame(self, fg_color="transparent")
-        options.grid(row=5, column=0, sticky="ew", padx=16, pady=8)
+        options.grid(row=4, column=0, sticky="ew", padx=16, pady=8)
         options.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -287,7 +273,7 @@ class SubtitleMuxerApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         # Log console
         log_frame = ctk.CTkFrame(self, corner_radius=10, border_width=1, border_color=("gray60", "gray35"))
-        log_frame.grid(row=6, column=0, sticky="nsew", padx=16, pady=(8, 16))
+        log_frame.grid(row=5, column=0, sticky="nsew", padx=16, pady=(8, 16))
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(1, weight=1)
 
